@@ -5,14 +5,14 @@ import 'package:soccer/services/api_service.dart';
 import 'package:soccer/widgets/match_list.dart';
 import 'package:soccer/screens/detail_screen.dart';
 
-class HomeScreen extends StatefulWidget {
-  const HomeScreen({super.key});
+class FinishedMatchesScreen extends StatefulWidget {
+  const FinishedMatchesScreen({super.key});
 
   @override
-  State<HomeScreen> createState() => _HomeScreenState();
+  State<FinishedMatchesScreen> createState() => _FinishedMatchesScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> {
+class _FinishedMatchesScreenState extends State<FinishedMatchesScreen> {
   final ApiService _apiService = ApiService();
   List<Match> _matches = [];
   bool _isLoading = true;
@@ -31,7 +31,7 @@ class _HomeScreenState extends State<HomeScreen> {
     });
 
     try {
-      final matches = await _apiService.getLiveAndScheduledMatches();
+      final matches = await _apiService.getFinishedMatches();
       setState(() {
         _matches = matches;
         _isLoading = false;
@@ -113,24 +113,13 @@ class _HomeScreenState extends State<HomeScreen> {
                 width: 1,
               ),
             ),
-            child: Row(
+            child: const Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.2),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: const Icon(
-                    Icons.sports_soccer,
-                    color: Colors.white,
-                    size: 24,
-                  ),
-                ),
-                const SizedBox(width: 12),
-                const Text(
-                  'Soccer Live Score',
+                Icon(Icons.history, color: Colors.white, size: 24),
+                SizedBox(width: 12),
+                Text(
+                  '종료된 경기',
                   style: TextStyle(
                     color: Colors.white,
                     fontSize: 24,
