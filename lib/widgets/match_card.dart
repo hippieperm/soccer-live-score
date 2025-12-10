@@ -241,11 +241,11 @@ class MatchCard extends StatelessWidget {
     final matchDate = DateTime(koreaDate.year, koreaDate.month, koreaDate.day);
 
     if (matchDate == today) {
-      return '오늘 ${koreaDate.hour.toString().padLeft(2, '0')}:${koreaDate.minute.toString().padLeft(2, '0')}';
+      return '오늘 - ${koreaDate.hour.toString().padLeft(2, '0')}:${koreaDate.minute.toString().padLeft(2, '0')}';
     } else if (matchDate == today.add(const Duration(days: 1))) {
-      return '내일 ${koreaDate.hour.toString().padLeft(2, '0')}:${koreaDate.minute.toString().padLeft(2, '0')}';
+      return '내일 - ${koreaDate.hour.toString().padLeft(2, '0')}:${koreaDate.minute.toString().padLeft(2, '0')}';
     } else {
-      return '${koreaDate.month}/${koreaDate.day} ${koreaDate.hour.toString().padLeft(2, '0')}:${koreaDate.minute.toString().padLeft(2, '0')}';
+      return '${koreaDate.month}/${koreaDate.day} - ${koreaDate.hour.toString().padLeft(2, '0')}:${koreaDate.minute.toString().padLeft(2, '0')}';
     }
   }
 }
