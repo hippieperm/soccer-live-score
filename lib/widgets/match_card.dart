@@ -35,7 +35,11 @@ class MatchCard extends StatelessWidget {
             Text(
               _formatStatus(match.status),
               style: TextStyle(
-                color: match.status == 'LIVE' ? Colors.red : Colors.grey,
+                color: match.status == 'LIVE' || match.status == 'IN_PLAY'
+                    ? Colors.red
+                    : match.status == 'SCHEDULED'
+                    ? Colors.blue
+                    : Colors.grey,
                 fontWeight: FontWeight.bold,
               ),
             ),
@@ -72,15 +76,28 @@ class MatchCard extends StatelessWidget {
   }
 
   Widget _buildScoreDisplay() {
-    final homeScore = match.score.fullTime?.home ?? match.score.halfTime?.home ?? 0;
-    final awayScore = match.score.fullTime?.away ?? match.score.halfTime?.away ?? 0;
+    // 경기 전 경기는 시간 표시, 그 외는 스코어 표시
+    if (match.status == 'SCHEDULED') {
+      final time = match.utcDate;
+      final hour = time.hour.toString().padLeft(2, '0');
+      final minute = time.minute.toString().padLeft(2, '0');
+      return Text(
+        '$hour:$minute',
+        style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+      );
+    }
+
+    final homeScore =
+        match.score.fullTime?.home ?? match.score.halfTime?.home ?? 0;
+    final awayScore =
+        match.score.fullTime?.away ?? match.score.halfTime?.away ?? 0;
 
     return Text(
       '$homeScore - $awayScore',
       style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
     );
   }
-  
+
   String _formatStatus(String status) {
     switch (status) {
       case 'IN_PLAY':
@@ -90,7 +107,7 @@ class MatchCard extends StatelessWidget {
       case 'FINISHED':
         return 'Finished';
       case 'SCHEDULED':
-        return 'Scheduled';
+        return '경기 예정';
       default:
         return status;
     }
