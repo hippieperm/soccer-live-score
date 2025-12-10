@@ -26,6 +26,8 @@ class _FinishedMatchesScreenState extends State<FinishedMatchesScreen> {
   }
 
   Future<void> _loadMatches() async {
+    if (!mounted) return;
+
     setState(() {
       _isLoading = true;
       _errorMessage = null;
@@ -33,6 +35,8 @@ class _FinishedMatchesScreenState extends State<FinishedMatchesScreen> {
 
     try {
       final matches = await _apiService.getFinishedMatches();
+      if (!mounted) return;
+
       if (matches.isNotEmpty) {
         final firstMatch = matches.first;
         _lastLoadedDate = firstMatch.utcDate;
@@ -42,6 +46,8 @@ class _FinishedMatchesScreenState extends State<FinishedMatchesScreen> {
         _isLoading = false;
       });
     } catch (e) {
+      if (!mounted) return;
+
       setState(() {
         _errorMessage = '경기 정보를 불러오는데 실패했습니다: ${e.toString()}';
         _isLoading = false;
@@ -58,6 +64,8 @@ class _FinishedMatchesScreenState extends State<FinishedMatchesScreen> {
         fromDate,
         toDate,
       );
+
+      if (!mounted) return;
 
       if (moreMatches.isNotEmpty) {
         final firstMatch = moreMatches.first;

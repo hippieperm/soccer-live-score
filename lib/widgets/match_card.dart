@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:soccer/models/match_model.dart';
+import 'package:soccer/models/score_model.dart';
 import 'dart:ui';
 
 class MatchCard extends StatelessWidget {
@@ -96,7 +97,13 @@ class MatchCard extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
                       // 홈 팀
-                      Expanded(child: _buildTeamColumn(team: match.homeTeam)),
+                      Expanded(
+                        child: _buildTeamWithBlur(
+                          team: match.homeTeam,
+                          isHome: true,
+                          score: score,
+                        ),
+                      ),
                       // 스코어 또는 VS
                       Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -146,9 +153,10 @@ class MatchCard extends StatelessWidget {
                       ),
                       // 원정 팀
                       Expanded(
-                        child: _buildTeamColumn(
+                        child: _buildTeamWithBlur(
                           team: match.awayTeam,
-                          isAway: true,
+                          isHome: false,
+                          score: score,
                         ),
                       ),
                     ],
@@ -158,6 +166,61 @@ class MatchCard extends StatelessWidget {
             ),
           ),
         ),
+      ),
+    );
+  }
+
+  Color? _getTeamBlurColor(Score? score, bool isHome) {
+    if (score == null || score.home == null || score.away == null) {
+      return null; // 스코어가 없으면 기본 색상
+    }
+
+    final homeScore = score.home!;
+    final awayScore = score.away!;
+
+    if (homeScore > awayScore) {
+      // 홈팀 승리
+      return isHome ? Colors.green : Colors.red;
+    } else if (homeScore < awayScore) {
+      // 원정팀 승리
+      return isHome ? Colors.red : Colors.green;
+    } else {
+      // 무승부
+      return Colors.grey;
+    }
+  }
+
+  Widget _buildTeamWithBlur({
+    required dynamic team,
+    required bool isHome,
+    Score? score,
+  }) {
+    final blurColor = _getTeamBlurColor(score, isHome);
+    final isAway = !isHome;
+
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(12),
+      child: Stack(
+        children: [
+          // 배경 블러 효과
+          if (blurColor != null)
+            Positioned.fill(
+              child: BackdropFilter(
+                filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: blurColor.withOpacity(0.2),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+              ),
+            ),
+          // 팀 정보
+          Padding(
+            padding: const EdgeInsets.all(8),
+            child: _buildTeamColumn(team: team, isAway: isAway),
+          ),
+        ],
       ),
     );
   }
