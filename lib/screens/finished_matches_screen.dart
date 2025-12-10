@@ -17,6 +17,7 @@ class _FinishedMatchesScreenState extends State<FinishedMatchesScreen> {
   List<Match> _matches = [];
   bool _isLoading = true;
   String? _errorMessage;
+  DateTime _lastLoadedDate = DateTime.now().subtract(const Duration(days: 7));
 
   @override
   void initState() {
@@ -32,6 +33,10 @@ class _FinishedMatchesScreenState extends State<FinishedMatchesScreen> {
 
     try {
       final matches = await _apiService.getFinishedMatches();
+      if (matches.isNotEmpty) {
+        final firstMatch = matches.first;
+        _lastLoadedDate = firstMatch.utcDate;
+      }
       setState(() {
         _matches = matches;
         _isLoading = false;
@@ -41,6 +46,29 @@ class _FinishedMatchesScreenState extends State<FinishedMatchesScreen> {
         _errorMessage = '경기 정보를 불러오는데 실패했습니다: ${e.toString()}';
         _isLoading = false;
       });
+    }
+  }
+
+  Future<void> _loadMoreMatches() async {
+    try {
+      final toDate = _lastLoadedDate.subtract(const Duration(days: 1));
+      final fromDate = toDate.subtract(const Duration(days: 7));
+
+      final moreMatches = await _apiService.getMoreFinishedMatches(
+        fromDate,
+        toDate,
+      );
+
+      if (moreMatches.isNotEmpty) {
+        final firstMatch = moreMatches.first;
+        _lastLoadedDate = firstMatch.utcDate;
+        setState(() {
+          _matches = [...moreMatches, ..._matches];
+          _matches.sort((a, b) => b.utcDate.compareTo(a.utcDate));
+        });
+      }
+    } catch (e) {
+      // 에러 발생 시 조용히 처리
     }
   }
 
@@ -76,6 +104,7 @@ class _FinishedMatchesScreenState extends State<FinishedMatchesScreen> {
                         matches: _matches,
                         onMatchTap: _onMatchTap,
                         isLoading: _isLoading,
+                        onLoadMore: _loadMoreMatches,
                       ),
               ),
             ],

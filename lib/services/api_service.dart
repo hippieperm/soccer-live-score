@@ -60,6 +60,30 @@ class ApiService {
     return allMatches;
   }
 
+  Future<List<Match>> getMoreScheduledMatches(
+    DateTime fromDate,
+    int days,
+  ) async {
+    final toDate = fromDate.add(Duration(days: days));
+
+    final dateFrom = fromDate.toIso8601String().split('T').first;
+    final dateTo = toDate.toIso8601String().split('T').first;
+
+    final uri = Uri.parse(
+      '$_baseUrl/competitions/PL/matches?status=SCHEDULED&dateFrom=$dateFrom&dateTo=$dateTo',
+    );
+
+    final response = await http.get(uri, headers: {'X-Auth-Token': _apiKey});
+
+    if (response.statusCode == 200) {
+      final data = json.decode(response.body);
+      final List<dynamic> matchesList = data['matches'];
+      return matchesList.map((json) => Match.fromJson(json)).toList();
+    } else {
+      throw Exception('Failed to load more scheduled matches');
+    }
+  }
+
   Future<List<Match>> getFinishedMatches() async {
     final today = DateTime.now();
     final oneWeekAgo = today.subtract(const Duration(days: 7));
@@ -79,6 +103,28 @@ class ApiService {
       return matchesList.map((json) => Match.fromJson(json)).toList();
     } else {
       throw Exception('Failed to load finished matches');
+    }
+  }
+
+  Future<List<Match>> getMoreFinishedMatches(
+    DateTime fromDate,
+    DateTime toDate,
+  ) async {
+    final dateFrom = fromDate.toIso8601String().split('T').first;
+    final dateTo = toDate.toIso8601String().split('T').first;
+
+    final uri = Uri.parse(
+      '$_baseUrl/competitions/PL/matches?status=FINISHED&dateFrom=$dateFrom&dateTo=$dateTo',
+    );
+
+    final response = await http.get(uri, headers: {'X-Auth-Token': _apiKey});
+
+    if (response.statusCode == 200) {
+      final data = json.decode(response.body);
+      final List<dynamic> matchesList = data['matches'];
+      return matchesList.map((json) => Match.fromJson(json)).toList();
+    } else {
+      throw Exception('Failed to load more finished matches');
     }
   }
 }

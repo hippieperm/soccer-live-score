@@ -17,6 +17,7 @@ class _HomeScreenState extends State<HomeScreen> {
   List<Match> _matches = [];
   bool _isLoading = true;
   String? _errorMessage;
+  DateTime _lastLoadedDate = DateTime.now().add(const Duration(days: 7));
 
   @override
   void initState() {
@@ -32,6 +33,10 @@ class _HomeScreenState extends State<HomeScreen> {
 
     try {
       final matches = await _apiService.getLiveAndScheduledMatches();
+      if (matches.isNotEmpty) {
+        final lastMatch = matches.last;
+        _lastLoadedDate = lastMatch.utcDate;
+      }
       setState(() {
         _matches = matches;
         _isLoading = false;
@@ -41,6 +46,25 @@ class _HomeScreenState extends State<HomeScreen> {
         _errorMessage = '경기 정보를 불러오는데 실패했습니다: ${e.toString()}';
         _isLoading = false;
       });
+    }
+  }
+
+  Future<void> _loadMoreMatches() async {
+    try {
+      final moreMatches = await _apiService.getMoreScheduledMatches(
+        _lastLoadedDate.add(const Duration(days: 1)),
+        7,
+      );
+      if (moreMatches.isNotEmpty) {
+        final lastMatch = moreMatches.last;
+        _lastLoadedDate = lastMatch.utcDate;
+        setState(() {
+          _matches = [..._matches, ...moreMatches];
+          _matches.sort((a, b) => a.utcDate.compareTo(b.utcDate));
+        });
+      }
+    } catch (e) {
+      // 에러 발생 시 조용히 처리 (무한 스크롤이므로)
     }
   }
 
@@ -76,6 +100,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         matches: _matches,
                         onMatchTap: _onMatchTap,
                         isLoading: _isLoading,
+                        onLoadMore: _loadMoreMatches,
                       ),
               ),
             ],
