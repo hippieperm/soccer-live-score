@@ -522,7 +522,9 @@ class DetailScreen extends StatelessWidget {
     );
   }
 
-  String _formatDateTime(DateTime date) {
+  String _formatDateTime(DateTime utcDate) {
+    // UTC를 한국 시간(UTC+9)으로 변환
+    final koreaDate = utcDate.add(const Duration(hours: 9));
     final months = [
       '1월',
       '2월',
@@ -539,8 +541,8 @@ class DetailScreen extends StatelessWidget {
     ];
     final weekdays = ['월', '화', '수', '목', '금', '토', '일'];
 
-    return '${date.year}년 ${months[date.month - 1]} ${date.day}일 '
-        '(${weekdays[date.weekday - 1]}) '
-        '${date.hour.toString().padLeft(2, '0')}:${date.minute.toString().padLeft(2, '0')}';
+    return '${koreaDate.year}년 ${months[koreaDate.month - 1]} ${koreaDate.day}일 '
+        '(${weekdays[koreaDate.weekday - 1]}) '
+        '${koreaDate.hour.toString().padLeft(2, '0')}:${koreaDate.minute.toString().padLeft(2, '0')}';
   }
 }

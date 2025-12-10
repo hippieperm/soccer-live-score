@@ -34,55 +34,59 @@ class MatchCard extends StatelessWidget {
               child: Column(
                 children: [
                   // 상태 및 날짜 정보
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  Stack(
+                    alignment: Alignment.center,
                     children: [
-                      if (isLive)
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 12,
-                            vertical: 4,
-                          ),
-                          decoration: BoxDecoration(
-                            color: Colors.red.withOpacity(0.3),
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(
-                              color: Colors.red.withOpacity(0.5),
-                              width: 1,
-                            ),
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Container(
-                                width: 8,
-                                height: 8,
-                                decoration: const BoxDecoration(
-                                  color: Colors.red,
-                                  shape: BoxShape.circle,
-                                ),
-                              ),
-                              const SizedBox(width: 6),
-                              const Text(
-                                'LIVE',
-                                style: TextStyle(
-                                  color: Colors.red,
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ],
-                          ),
-                        )
-                      else
-                        const SizedBox.shrink(),
+                      // 날짜 (중앙)
                       Text(
                         _formatDate(match.utcDate),
                         style: TextStyle(
                           color: Colors.white.withOpacity(0.7),
                           fontSize: 12,
+                          fontWeight: FontWeight.bold,
                         ),
                       ),
+                      // LIVE 표시 (왼쪽)
+                      if (isLive)
+                        Positioned(
+                          left: 0,
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 4,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Colors.red.withOpacity(0.3),
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(
+                                color: Colors.red.withOpacity(0.5),
+                                width: 1,
+                              ),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Container(
+                                  width: 8,
+                                  height: 8,
+                                  decoration: const BoxDecoration(
+                                    color: Colors.red,
+                                    shape: BoxShape.circle,
+                                  ),
+                                ),
+                                const SizedBox(width: 6),
+                                const Text(
+                                  'LIVE',
+                                  style: TextStyle(
+                                    color: Colors.red,
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
                     ],
                   ),
                   const SizedBox(height: 16),
@@ -229,17 +233,19 @@ class MatchCard extends StatelessWidget {
     );
   }
 
-  String _formatDate(DateTime date) {
-    final now = DateTime.now();
+  String _formatDate(DateTime utcDate) {
+    // UTC를 한국 시간(UTC+9)으로 변환
+    final koreaDate = utcDate.add(const Duration(hours: 9));
+    final now = DateTime.now().toUtc().add(const Duration(hours: 9));
     final today = DateTime(now.year, now.month, now.day);
-    final matchDate = DateTime(date.year, date.month, date.day);
+    final matchDate = DateTime(koreaDate.year, koreaDate.month, koreaDate.day);
 
     if (matchDate == today) {
-      return '오늘 ${date.hour.toString().padLeft(2, '0')}:${date.minute.toString().padLeft(2, '0')}';
+      return '오늘 ${koreaDate.hour.toString().padLeft(2, '0')}:${koreaDate.minute.toString().padLeft(2, '0')}';
     } else if (matchDate == today.add(const Duration(days: 1))) {
-      return '내일 ${date.hour.toString().padLeft(2, '0')}:${date.minute.toString().padLeft(2, '0')}';
+      return '내일 ${koreaDate.hour.toString().padLeft(2, '0')}:${koreaDate.minute.toString().padLeft(2, '0')}';
     } else {
-      return '${date.month}/${date.day} ${date.hour.toString().padLeft(2, '0')}:${date.minute.toString().padLeft(2, '0')}';
+      return '${koreaDate.month}/${koreaDate.day} ${koreaDate.hour.toString().padLeft(2, '0')}:${koreaDate.minute.toString().padLeft(2, '0')}';
     }
   }
 }
