@@ -8,17 +8,30 @@ class ApiService {
       'd4ba84b5257e4148a586c2aa57a8a99a'; // TODO: Replace with your actual API key
 
   Future<List<Match>> getLiveMatches() async {
-    final response = await http.get(
-      Uri.parse('$_baseUrl/competitions/PL/matches?status=LIVE'),
-      headers: {'X-Auth-Token': _apiKey},
-    );
+    try {
+      final response = await http.get(
+        Uri.parse('$_baseUrl/competitions/PL/matches?status=LIVE'),
+        headers: {'X-Auth-Token': _apiKey},
+      );
 
-    if (response.statusCode == 200) {
-      final data = json.decode(response.body);
-      final List<dynamic> matchesList = data['matches'];
-      return matchesList.map((json) => Match.fromJson(json)).toList();
-    } else {
-      throw Exception('Failed to load live matches');
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        final List<dynamic> matchesList = data['matches'];
+        return matchesList.map((json) => Match.fromJson(json)).toList();
+      } else {
+        // 더 자세한 에러 정보 제공
+        final errorMessage = response.body.isNotEmpty
+            ? json.decode(response.body)['message'] ?? 'Unknown error'
+            : 'HTTP ${response.statusCode}';
+        throw Exception(
+          'Failed to load live matches: $errorMessage (Status: ${response.statusCode})',
+        );
+      }
+    } catch (e) {
+      if (e is Exception) {
+        rethrow;
+      }
+      throw Exception('Failed to load live matches: $e');
     }
   }
 
@@ -33,31 +46,60 @@ class ApiService {
       '$_baseUrl/competitions/PL/matches?status=SCHEDULED&dateFrom=$dateFrom&dateTo=$dateTo',
     );
 
-    final response = await http.get(uri, headers: {'X-Auth-Token': _apiKey});
+    try {
+      final response = await http.get(uri, headers: {'X-Auth-Token': _apiKey});
 
-    if (response.statusCode == 200) {
-      final data = json.decode(response.body);
-      final List<dynamic> matchesList = data['matches'];
-      return matchesList.map((json) => Match.fromJson(json)).toList();
-    } else {
-      throw Exception('Failed to load scheduled matches');
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        final List<dynamic> matchesList = data['matches'];
+        return matchesList.map((json) => Match.fromJson(json)).toList();
+      } else {
+        // 더 자세한 에러 정보 제공
+        final errorMessage = response.body.isNotEmpty
+            ? json.decode(response.body)['message'] ?? 'Unknown error'
+            : 'HTTP ${response.statusCode}';
+        throw Exception(
+          'Failed to load scheduled matches: $errorMessage (Status: ${response.statusCode})',
+        );
+      }
+    } catch (e) {
+      if (e is Exception) {
+        rethrow;
+      }
+      throw Exception('Failed to load scheduled matches: $e');
     }
   }
 
   Future<List<Match>> getLiveAndScheduledMatches() async {
-    final results = await Future.wait([
-      getLiveMatches(),
-      getScheduledMatches(),
-    ]);
+    try {
+      // 라이브 경기와 예정 경기를 병렬로 가져오되, 하나라도 실패해도 계속 진행
+      final results = await Future.wait([
+        getLiveMatches().catchError((e) {
+          print('라이브 경기 로드 실패: $e');
+          return <Match>[];
+        }),
+        getScheduledMatches().catchError((e) {
+          print('예정 경기 로드 실패: $e');
+          return <Match>[];
+        }),
+      ]);
 
-    final liveMatches = results[0];
-    final scheduledMatches = results[1];
+      final liveMatches = results[0];
+      final scheduledMatches = results[1];
 
-    // 라이브 경기를 먼저, 그 다음 경기 전 경기를 시간순으로 정렬
-    final allMatches = [...liveMatches, ...scheduledMatches];
-    allMatches.sort((a, b) => a.utcDate.compareTo(b.utcDate));
+      // 둘 다 실패한 경우에만 에러 발생
+      if (liveMatches.isEmpty && scheduledMatches.isEmpty) {
+        throw Exception('라이브 경기와 예정 경기를 모두 불러오는데 실패했습니다');
+      }
 
-    return allMatches;
+      // 라이브 경기를 먼저, 그 다음 경기 전 경기를 시간순으로 정렬
+      final allMatches = [...liveMatches, ...scheduledMatches];
+      allMatches.sort((a, b) => a.utcDate.compareTo(b.utcDate));
+
+      return allMatches;
+    } catch (e) {
+      throw Exception('경기 정보를 불러오는데 실패했습니다: $e');
+    }
   }
 
   Future<List<Match>> getMoreScheduledMatches(
