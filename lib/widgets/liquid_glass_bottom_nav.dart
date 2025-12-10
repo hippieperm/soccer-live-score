@@ -16,14 +16,14 @@ class LiquidGlassBottomNav extends StatelessWidget {
     return Container(
       margin: const EdgeInsets.all(16),
       child: ClipRRect(
-        borderRadius: BorderRadius.circular(24),
+        borderRadius: BorderRadius.circular(60),
         child: BackdropFilter(
           filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
           child: Container(
             height: 80,
             decoration: BoxDecoration(
               color: Colors.white.withOpacity(0.08),
-              borderRadius: BorderRadius.circular(24),
+              borderRadius: BorderRadius.circular(60),
               border: Border.all(
                 color: Colors.white.withOpacity(0.1),
                 width: 1.5,
