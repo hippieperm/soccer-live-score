@@ -2,12 +2,46 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:soccer/models/match_model.dart';
 
+// 캐시 엔트리 클래스
+class _CacheEntry {
+  final List<Match> data;
+  final DateTime timestamp;
+
+  _CacheEntry(this.data, this.timestamp);
+}
+
 class ApiService {
   final String _baseUrl = 'https://api.football-data.org/v4/';
   final String _apiKey =
       'd4ba84b5257e4148a586c2aa57a8a99a'; // TODO: Replace with your actual API key
 
+  // 간단한 메모리 캐시 (실제로는 shared_preferences 사용 권장)
+  final Map<String, _CacheEntry> _cache = {};
+
+  // 캐시 유효 시간 (분)
+  static const int _cacheValidMinutes = 5;
+
+  // 캐시 유효성 확인
+  bool _isCacheValid(String key) {
+    if (!_cache.containsKey(key)) {
+      return false;
+    }
+
+    final entry = _cache[key]!;
+    final now = DateTime.now();
+    final difference = now.difference(entry.timestamp);
+
+    return difference.inMinutes < _cacheValidMinutes;
+  }
+
   Future<List<Match>> getLiveMatches() async {
+    const cacheKey = 'live_matches';
+
+    // 캐시 확인
+    if (_isCacheValid(cacheKey)) {
+      return _cache[cacheKey]!.data;
+    }
+
     try {
       final response = await http.get(
         Uri.parse('$_baseUrl/competitions/PL/matches?status=LIVE'),
@@ -17,8 +51,20 @@ class ApiService {
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         final List<dynamic> matchesList = data['matches'];
-        return matchesList.map((json) => Match.fromJson(json)).toList();
+        final matches = matchesList
+            .map((json) => Match.fromJson(json))
+            .toList();
+
+        // 캐시에 저장
+        _cache[cacheKey] = _CacheEntry(matches, DateTime.now());
+
+        return matches;
       } else {
+        // 캐시된 데이터가 있으면 반환
+        if (_cache.containsKey(cacheKey)) {
+          return _cache[cacheKey]!.data;
+        }
+
         // 더 자세한 에러 정보 제공
         final errorMessage = response.body.isNotEmpty
             ? json.decode(response.body)['message'] ?? 'Unknown error'
@@ -28,6 +74,11 @@ class ApiService {
         );
       }
     } catch (e) {
+      // 캐시된 데이터가 있으면 반환
+      if (_cache.containsKey(cacheKey)) {
+        return _cache[cacheKey]!.data;
+      }
+
       if (e is Exception) {
         rethrow;
       }
@@ -42,6 +93,13 @@ class ApiService {
     final dateFrom = today.toIso8601String().split('T').first;
     final dateTo = oneWeekAhead.toIso8601String().split('T').first;
 
+    final cacheKey = 'scheduled_matches_$dateFrom';
+
+    // 캐시 확인
+    if (_isCacheValid(cacheKey)) {
+      return _cache[cacheKey]!.data;
+    }
+
     final uri = Uri.parse(
       '$_baseUrl/competitions/PL/matches?status=SCHEDULED&dateFrom=$dateFrom&dateTo=$dateTo',
     );
@@ -52,8 +110,20 @@ class ApiService {
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         final List<dynamic> matchesList = data['matches'];
-        return matchesList.map((json) => Match.fromJson(json)).toList();
+        final matches = matchesList
+            .map((json) => Match.fromJson(json))
+            .toList();
+
+        // 캐시에 저장
+        _cache[cacheKey] = _CacheEntry(matches, DateTime.now());
+
+        return matches;
       } else {
+        // 캐시된 데이터가 있으면 반환
+        if (_cache.containsKey(cacheKey)) {
+          return _cache[cacheKey]!.data;
+        }
+
         // 더 자세한 에러 정보 제공
         final errorMessage = response.body.isNotEmpty
             ? json.decode(response.body)['message'] ?? 'Unknown error'
@@ -63,6 +133,11 @@ class ApiService {
         );
       }
     } catch (e) {
+      // 캐시된 데이터가 있으면 반환
+      if (_cache.containsKey(cacheKey)) {
+        return _cache[cacheKey]!.data;
+      }
+
       if (e is Exception) {
         rethrow;
       }
@@ -168,5 +243,10 @@ class ApiService {
     } else {
       throw Exception('Failed to load more finished matches');
     }
+  }
+
+  // 캐시 클리어
+  void clearCache() {
+    _cache.clear();
   }
 }
