@@ -22,10 +22,10 @@ class LiquidGlassBottomNav extends StatelessWidget {
           child: Container(
             height: 80,
             decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.15),
+              color: Colors.white.withOpacity(0.08),
               borderRadius: BorderRadius.circular(24),
               border: Border.all(
-                color: Colors.white.withOpacity(0.2),
+                color: Colors.white.withOpacity(0.1),
                 width: 1.5,
               ),
             ),
@@ -72,7 +72,7 @@ class LiquidGlassBottomNav extends StatelessWidget {
                 padding: const EdgeInsets.all(6),
                 decoration: BoxDecoration(
                   color: isSelected
-                      ? Colors.white.withOpacity(0.3)
+                      ? Colors.white.withOpacity(0.2)
                       : Colors.transparent,
                   borderRadius: BorderRadius.circular(12),
                 ),

@@ -86,21 +86,62 @@ class MatchCard extends StatelessWidget {
                     ],
                   ),
                   const SizedBox(height: 16),
-                  // 홈 팀
-                  _buildTeamRow(
-                    team: match.homeTeam,
-                    score: score?.home,
-                    isHome: true,
-                  ),
-                  const SizedBox(height: 12),
-                  // 구분선
-                  Container(height: 1, color: Colors.white.withOpacity(0.1)),
-                  const SizedBox(height: 12),
-                  // 원정 팀
-                  _buildTeamRow(
-                    team: match.awayTeam,
-                    score: score?.away,
-                    isHome: false,
+                  // 홈 팀과 원정 팀 가로 배치
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      // 홈 팀
+                      Expanded(child: _buildTeamColumn(team: match.homeTeam)),
+                      // 스코어 또는 VS
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        child: score != null
+                            ? Column(
+                                children: [
+                                  Text(
+                                    '${score.home ?? '-'}',
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 20,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                  Text(
+                                    ':',
+                                    style: TextStyle(
+                                      color: Colors.white.withOpacity(0.5),
+                                      fontSize: 20,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                  Text(
+                                    '${score.away ?? '-'}',
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 20,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ],
+                              )
+                            : Text(
+                                'VS',
+                                style: TextStyle(
+                                  color: Colors.white.withOpacity(0.5),
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                      ),
+                      // 원정 팀
+                      Expanded(
+                        child: _buildTeamColumn(
+                          team: match.awayTeam,
+                          isAway: true,
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),
@@ -111,101 +152,73 @@ class MatchCard extends StatelessWidget {
     );
   }
 
-  Widget _buildTeamRow({
-    required team,
-    required int? score,
-    required bool isHome,
-  }) {
-    return Row(
+  Widget _buildTeamColumn({required dynamic team, bool isAway = false}) {
+    return Column(
+      crossAxisAlignment: isAway
+          ? CrossAxisAlignment.end
+          : CrossAxisAlignment.start,
       children: [
-        Expanded(
-          child: Row(
-            children: [
-              // 팀 로고 (크레스트가 있으면 표시)
-              if (team.crest != null)
-                Container(
-                  width: 32,
-                  height: 32,
-                  margin: const EdgeInsets.only(right: 12),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(8),
-                    child: Image.network(
-                      team.crest!,
-                      fit: BoxFit.contain,
-                      errorBuilder: (context, error, stackTrace) {
-                        return Container(
-                          color: Colors.white.withOpacity(0.1),
-                          child: const Icon(
-                            Icons.sports_soccer,
-                            color: Colors.white,
-                            size: 20,
-                          ),
-                        );
-                      },
-                    ),
-                  ),
-                )
-              else
-                Container(
-                  width: 32,
-                  height: 32,
-                  margin: const EdgeInsets.only(right: 12),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: const Icon(
-                    Icons.sports_soccer,
-                    color: Colors.white,
-                    size: 20,
+        // 팀 로고
+        Row(
+          mainAxisAlignment: isAway
+              ? MainAxisAlignment.end
+              : MainAxisAlignment.start,
+          children: [
+            if (team.crest != null)
+              Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(10),
+                  child: Image.network(
+                    team.crest!,
+                    fit: BoxFit.contain,
+                    errorBuilder: (context, error, stackTrace) {
+                      return Container(
+                        color: Colors.white.withOpacity(0.1),
+                        child: const Icon(
+                          Icons.sports_soccer,
+                          color: Colors.white,
+                          size: 24,
+                        ),
+                      );
+                    },
                   ),
                 ),
-              // 팀 이름
-              Expanded(
-                child: Text(
-                  team.shortName ?? team.name,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
+              )
+            else
+              Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Icon(
+                  Icons.sports_soccer,
+                  color: Colors.white,
+                  size: 24,
                 ),
               ),
-            ],
-          ),
+          ],
         ),
-        // 스코어
-        if (score != null)
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-            decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.2),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Text(
-              score.toString(),
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          )
-        else
-          Text(
-            '-',
-            style: TextStyle(
-              color: Colors.white.withOpacity(0.5),
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-            ),
+        const SizedBox(height: 8),
+        // 팀 이름
+        Text(
+          team.shortName ?? team.name,
+          style: const TextStyle(
+            color: Colors.white,
+            fontSize: 14,
+            fontWeight: FontWeight.w600,
           ),
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          textAlign: isAway ? TextAlign.right : TextAlign.left,
+        ),
       ],
     );
   }
