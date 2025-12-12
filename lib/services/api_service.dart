@@ -21,6 +21,17 @@ class ApiService {
   // 캐시 유효 시간 (분)
   static const int _cacheValidMinutes = 5;
 
+  // 주요 리그 코드 목록
+  static const List<String> _majorLeagues = [
+    'PL', // Premier League (프리미어리그)
+    'PD', // Primera Division (라리가)
+    'BL1', // Bundesliga (분데스리가)
+    'SA', // Serie A (세리에 A)
+    'FL1', // Ligue 1 (리그앙)
+    'CL', // Champions League (챔피언스리그)
+    'EL', // Europa League (유로파리그)
+  ];
+
   // 캐시 유효성 확인
   bool _isCacheValid(String key) {
     if (!_cache.containsKey(key)) {
@@ -34,8 +45,27 @@ class ApiService {
     return difference.inMinutes < _cacheValidMinutes;
   }
 
+  /// 특정 리그의 라이브 경기를 가져옵니다
+  Future<List<Match>> _getLiveMatchesForLeague(String leagueCode) async {
+    try {
+      final response = await http.get(
+        Uri.parse('$_baseUrl/competitions/$leagueCode/matches?status=LIVE'),
+        headers: {'X-Auth-Token': _apiKey},
+      );
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        final List<dynamic> matchesList = data['matches'];
+        return matchesList.map((json) => Match.fromJson(json)).toList();
+      }
+      return [];
+    } catch (e) {
+      return [];
+    }
+  }
+
   Future<List<Match>> getLiveMatches() async {
-    const cacheKey = 'live_matches';
+    const cacheKey = 'live_matches_all';
 
     // 캐시 확인
     if (_isCacheValid(cacheKey)) {
@@ -43,36 +73,22 @@ class ApiService {
     }
 
     try {
-      final response = await http.get(
-        Uri.parse('$_baseUrl/competitions/PL/matches?status=LIVE'),
-        headers: {'X-Auth-Token': _apiKey},
+      // 모든 리그의 라이브 경기를 병렬로 가져오기
+      final futures = _majorLeagues.map(
+        (league) => _getLiveMatchesForLeague(league),
       );
+      final results = await Future.wait(futures);
 
-      if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-        final List<dynamic> matchesList = data['matches'];
-        final matches = matchesList
-            .map((json) => Match.fromJson(json))
-            .toList();
-
-        // 캐시에 저장
-        _cache[cacheKey] = _CacheEntry(matches, DateTime.now());
-
-        return matches;
-      } else {
-        // 캐시된 데이터가 있으면 반환
-        if (_cache.containsKey(cacheKey)) {
-          return _cache[cacheKey]!.data;
-        }
-
-        // 더 자세한 에러 정보 제공
-        final errorMessage = response.body.isNotEmpty
-            ? json.decode(response.body)['message'] ?? 'Unknown error'
-            : 'HTTP ${response.statusCode}';
-        throw Exception(
-          'Failed to load live matches: $errorMessage (Status: ${response.statusCode})',
-        );
+      // 모든 경기를 하나의 리스트로 합치기
+      final allMatches = <Match>[];
+      for (var matches in results) {
+        allMatches.addAll(matches);
       }
+
+      // 캐시에 저장
+      _cache[cacheKey] = _CacheEntry(allMatches, DateTime.now());
+
+      return allMatches;
     } catch (e) {
       // 캐시된 데이터가 있으면 반환
       if (_cache.containsKey(cacheKey)) {
@@ -86,6 +102,29 @@ class ApiService {
     }
   }
 
+  /// 특정 리그의 예정 경기를 가져옵니다
+  Future<List<Match>> _getScheduledMatchesForLeague(
+    String leagueCode,
+    String dateFrom,
+    String dateTo,
+  ) async {
+    try {
+      final uri = Uri.parse(
+        '$_baseUrl/competitions/$leagueCode/matches?status=SCHEDULED&dateFrom=$dateFrom&dateTo=$dateTo',
+      );
+      final response = await http.get(uri, headers: {'X-Auth-Token': _apiKey});
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        final List<dynamic> matchesList = data['matches'];
+        return matchesList.map((json) => Match.fromJson(json)).toList();
+      }
+      return [];
+    } catch (e) {
+      return [];
+    }
+  }
+
   Future<List<Match>> getScheduledMatches() async {
     final today = DateTime.now();
     final oneWeekAhead = today.add(const Duration(days: 7));
@@ -93,45 +132,30 @@ class ApiService {
     final dateFrom = today.toIso8601String().split('T').first;
     final dateTo = oneWeekAhead.toIso8601String().split('T').first;
 
-    final cacheKey = 'scheduled_matches_$dateFrom';
+    final cacheKey = 'scheduled_matches_all_$dateFrom';
 
     // 캐시 확인
     if (_isCacheValid(cacheKey)) {
       return _cache[cacheKey]!.data;
     }
 
-    final uri = Uri.parse(
-      '$_baseUrl/competitions/PL/matches?status=SCHEDULED&dateFrom=$dateFrom&dateTo=$dateTo',
-    );
-
     try {
-      final response = await http.get(uri, headers: {'X-Auth-Token': _apiKey});
+      // 모든 리그의 예정 경기를 병렬로 가져오기
+      final futures = _majorLeagues.map(
+        (league) => _getScheduledMatchesForLeague(league, dateFrom, dateTo),
+      );
+      final results = await Future.wait(futures);
 
-      if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-        final List<dynamic> matchesList = data['matches'];
-        final matches = matchesList
-            .map((json) => Match.fromJson(json))
-            .toList();
-
-        // 캐시에 저장
-        _cache[cacheKey] = _CacheEntry(matches, DateTime.now());
-
-        return matches;
-      } else {
-        // 캐시된 데이터가 있으면 반환
-        if (_cache.containsKey(cacheKey)) {
-          return _cache[cacheKey]!.data;
-        }
-
-        // 더 자세한 에러 정보 제공
-        final errorMessage = response.body.isNotEmpty
-            ? json.decode(response.body)['message'] ?? 'Unknown error'
-            : 'HTTP ${response.statusCode}';
-        throw Exception(
-          'Failed to load scheduled matches: $errorMessage (Status: ${response.statusCode})',
-        );
+      // 모든 경기를 하나의 리스트로 합치기
+      final allMatches = <Match>[];
+      for (var matches in results) {
+        allMatches.addAll(matches);
       }
+
+      // 캐시에 저장
+      _cache[cacheKey] = _CacheEntry(allMatches, DateTime.now());
+
+      return allMatches;
     } catch (e) {
       // 캐시된 데이터가 있으면 반환
       if (_cache.containsKey(cacheKey)) {
@@ -186,18 +210,45 @@ class ApiService {
     final dateFrom = fromDate.toIso8601String().split('T').first;
     final dateTo = toDate.toIso8601String().split('T').first;
 
-    final uri = Uri.parse(
-      '$_baseUrl/competitions/PL/matches?status=SCHEDULED&dateFrom=$dateFrom&dateTo=$dateTo',
-    );
+    try {
+      // 모든 리그의 예정 경기를 병렬로 가져오기
+      final futures = _majorLeagues.map(
+        (league) => _getScheduledMatchesForLeague(league, dateFrom, dateTo),
+      );
+      final results = await Future.wait(futures);
 
-    final response = await http.get(uri, headers: {'X-Auth-Token': _apiKey});
+      // 모든 경기를 하나의 리스트로 합치기
+      final allMatches = <Match>[];
+      for (var matches in results) {
+        allMatches.addAll(matches);
+      }
 
-    if (response.statusCode == 200) {
-      final data = json.decode(response.body);
-      final List<dynamic> matchesList = data['matches'];
-      return matchesList.map((json) => Match.fromJson(json)).toList();
-    } else {
-      throw Exception('Failed to load more scheduled matches');
+      return allMatches;
+    } catch (e) {
+      throw Exception('Failed to load more scheduled matches: $e');
+    }
+  }
+
+  /// 특정 리그의 종료된 경기를 가져옵니다
+  Future<List<Match>> _getFinishedMatchesForLeague(
+    String leagueCode,
+    String dateFrom,
+    String dateTo,
+  ) async {
+    try {
+      final uri = Uri.parse(
+        '$_baseUrl/competitions/$leagueCode/matches?status=FINISHED&dateFrom=$dateFrom&dateTo=$dateTo',
+      );
+      final response = await http.get(uri, headers: {'X-Auth-Token': _apiKey});
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        final List<dynamic> matchesList = data['matches'];
+        return matchesList.map((json) => Match.fromJson(json)).toList();
+      }
+      return [];
+    } catch (e) {
+      return [];
     }
   }
 
@@ -208,18 +259,40 @@ class ApiService {
     final dateFrom = oneWeekAgo.toIso8601String().split('T').first;
     final dateTo = today.toIso8601String().split('T').first;
 
-    final uri = Uri.parse(
-      '$_baseUrl/competitions/PL/matches?status=FINISHED&dateFrom=$dateFrom&dateTo=$dateTo',
-    );
+    final cacheKey = 'finished_matches_all_$dateFrom';
 
-    final response = await http.get(uri, headers: {'X-Auth-Token': _apiKey});
+    // 캐시 확인
+    if (_isCacheValid(cacheKey)) {
+      return _cache[cacheKey]!.data;
+    }
 
-    if (response.statusCode == 200) {
-      final data = json.decode(response.body);
-      final List<dynamic> matchesList = data['matches'];
-      return matchesList.map((json) => Match.fromJson(json)).toList();
-    } else {
-      throw Exception('Failed to load finished matches');
+    try {
+      // 모든 리그의 종료된 경기를 병렬로 가져오기
+      final futures = _majorLeagues.map(
+        (league) => _getFinishedMatchesForLeague(league, dateFrom, dateTo),
+      );
+      final results = await Future.wait(futures);
+
+      // 모든 경기를 하나의 리스트로 합치기
+      final allMatches = <Match>[];
+      for (var matches in results) {
+        allMatches.addAll(matches);
+      }
+
+      // 시간순으로 정렬
+      allMatches.sort((a, b) => b.utcDate.compareTo(a.utcDate));
+
+      // 캐시에 저장
+      _cache[cacheKey] = _CacheEntry(allMatches, DateTime.now());
+
+      return allMatches;
+    } catch (e) {
+      // 캐시된 데이터가 있으면 반환
+      if (_cache.containsKey(cacheKey)) {
+        return _cache[cacheKey]!.data;
+      }
+
+      throw Exception('Failed to load finished matches: $e');
     }
   }
 
@@ -230,18 +303,25 @@ class ApiService {
     final dateFrom = fromDate.toIso8601String().split('T').first;
     final dateTo = toDate.toIso8601String().split('T').first;
 
-    final uri = Uri.parse(
-      '$_baseUrl/competitions/PL/matches?status=FINISHED&dateFrom=$dateFrom&dateTo=$dateTo',
-    );
+    try {
+      // 모든 리그의 종료된 경기를 병렬로 가져오기
+      final futures = _majorLeagues.map(
+        (league) => _getFinishedMatchesForLeague(league, dateFrom, dateTo),
+      );
+      final results = await Future.wait(futures);
 
-    final response = await http.get(uri, headers: {'X-Auth-Token': _apiKey});
+      // 모든 경기를 하나의 리스트로 합치기
+      final allMatches = <Match>[];
+      for (var matches in results) {
+        allMatches.addAll(matches);
+      }
 
-    if (response.statusCode == 200) {
-      final data = json.decode(response.body);
-      final List<dynamic> matchesList = data['matches'];
-      return matchesList.map((json) => Match.fromJson(json)).toList();
-    } else {
-      throw Exception('Failed to load more finished matches');
+      // 시간순으로 정렬
+      allMatches.sort((a, b) => b.utcDate.compareTo(a.utcDate));
+
+      return allMatches;
+    } catch (e) {
+      throw Exception('Failed to load more finished matches: $e');
     }
   }
 
